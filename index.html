@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scratch Broadcast & Receive - Alphagen Learning</title>
+    
+    <!-- Google Fonts: Poppins & Fira Code -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FontAwesome & Canvas Confetti CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    },
+                    colors: {
+                        alphagen: {
+                            purple: '#5E48C4',      // Primary Brand Purple
+                            purpleDark: '#4A3AAD',  // Dark Purple hover
+                            purpleMid: '#7B6ED4',   // Decorative fills & borders
+                            purplePale: '#EAE7FE',  // Light note & highlight boxes
+                            purpleGhost: '#F5F4FF', // Page & card ghost background
+                            yellow: '#FFD071',      // Spark Yellow accent
+                            yellowDark: '#E6B84A',  // Yellow text on light surfaces
+                            yellowPale: '#FFF3CC',  // Soft highlight background
+                            nearBlack: '#1A1A1A',   // Primary text
+                            darkGrey: '#404048',    // Secondary text
+                            midGrey: '#888896',     // Captions & labels
+                            lightGrey: '#F2F2F4',   // Neutral card background
+                            cyan: '#59E4FB',        // Tech accent light
+                            cyanDark: '#055F6E',    // Tech accent dark
+                            cyanPale: '#E0FAFE',    // Tech pale background
+                            coral: '#ED5661',       // Warning / bug accent
+                            coralDark: '#993040',   // Warning dark text
+                            coralPale: '#FFF0F1'    // Warning pale background
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f081d;
+            font-family: 'Poppins', sans-serif;
+            color: #1A1A1A;
+            overflow-x: hidden;
+            user-select: none;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 1280x720 Fixed Presentation Stage Frame */
+        .slide-stage {
+            width: 1280px;
+            height: 720px;
+            margin: 16px auto 0 auto;
+            position: relative;
+            overflow: hidden;
+            box-sizing: border-box;
+            background-color: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid #EAE7FE;
+        }
+
+        .slide-panel {
+            width: 1280px;
+            height: 720px;
+            padding: 28px 48px;
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            position: absolute;
+            top: 0;
+            left: 0;
+            box-sizing: border-box;
+            background: #ffffff;
+        }
+
+        .slide-panel.active {
+            display: flex;
+            animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn-interactive {
+            cursor: pointer;
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background-color 0.2s ease;
+        }
+        .btn-interactive:hover {
+            transform: translateY(-2px) scale(1.02);
+        }
+        .btn-interactive:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        .nav-bar {
+            width: 1280px;
+            margin: 12px auto 16px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+        }
+
+        .nav-btn {
+            background: #2A1C68;
+            color: #FFD071;
+            border: 2px solid #5E48C4;
+            padding: 10px 24px;
+            border-radius: 14px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+        .nav-btn:hover:not(:disabled) {
+            background: #5E48C4;
+            color: #ffffff;
+            transform: scale(1.04);
+        }
+        .nav-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .dot-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #2A1C68;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .dot-indicator.active {
+            background: #FFD071;
+            width: 24px;
+            border-radius: 10px;
+        }
+
+        .spark-wavy-underline {
+            position: relative;
+            display: inline-block;
+            color: #5E48C4;
+        }
+        .spark-wavy-underline::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -6px;
+            width: 100%;
+            height: 10px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 4' preserveAspectRatio='none'%3E%3Cpath d='M0 2 Q 5 0, 10 2 T 20 2' fill='none' stroke='%23FFD071' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: repeat-x;
+            background-size: 18px 10px;
+        }
+
+        .quiz-option {
+            background: #ffffff;
+            border: 2px solid #EAE7FE;
+            border-radius: 16px;
+            padding: 12px 18px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1A1A1A;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-align: left;
+        }
+        .quiz-option:hover {
+            border-color: #5E48C4;
+            background: #F5F4FF;
+        }
+        .quiz-option.selected-correct {
+            background: #f0fdf4 !important;
+            border-color: #22c55e !important;
+            color: #14532d !important;
+        }
+        .quiz-option.selected-wrong {
+            background: #FFF0F1 !important;
+            border-color: #ED5661 !important;
+            color: #993040 !important;
+        }
+
+        /* Signal Wave Animation */
+        @keyframes pulseWave {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+        .signal-wave {
+            animation: pulseWave 1.2s infinite ease-out;
+        }
+
+        /* Whistle Pulse Animation Keyframes */
+        @keyframes whistlePulse {
+            0% { transform: scale(0.6); opacity: 0.9; }
+            100% { transform: scale(2.4); opacity: 0; }
+        }
+        .whistle-wave {
+            animation: whistlePulse 1s infinite ease-out;
+        }
+
+        @keyframes playerRun1 {
+            0% { transform: translateX(0) translateY(0); }
+            25% { transform: translateX(25px) translateY(-8px); }
+            50% { transform: translateX(50px) translateY(0); }
+            75% { transform: translateX(75px) translateY(-8px); }
+            100% { transform: translateX(100px) translateY(0); }
+        }
+
+        @keyframes playerRun2 {
+            0% { transform: translateX(0) translateY(0); }
+            25% { transform: translateX(-20px) translateY(-6px); }
+            50% { transform: translateX(-45px) translateY(0); }
+            75% { transform: translateX(-65px) translateY(-6px); }
+            100% { transform: translateX(-90px) translateY(0); }
+        }
+
+        @keyframes ballRoll {
+            0% { transform: translateX(0) rotate(0deg); }
+            100% { transform: translateX(120px) rotate(720deg); }
+        }
+
+        .running-player-1 {
+            animation: playerRun1 2s ease-in-out infinite alternate;
+        }
+        .running-player-2 {
+            animation: playerRun2 2s ease-in-out infinite alternate;
+        }
+        .rolling-ball {
+            animation: ballRoll 2s ease-in-out infinite alternate;
+        }
+
+        /* Hawker Centre Animation Keyframes */
+        @keyframes customerWalk {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-20px) scale(1.1); }
+            100% { transform: translateY(-35px) scale(1.15); }
+        }
+        .customer-collecting {
+            animation: customerWalk 1s forwards ease-out;
+        }
+        /* Customer Pickup Animations */
+        @keyframes cust42Pickup {
+            0% { transform: translate(0, 0); }
+            40% { transform: translate(-230px, -15px); }
+            60% { transform: translate(-230px, -15px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        @keyframes cust45Pickup {
+            0% { transform: translate(0, 0); }
+            40% { transform: translate(-170px, -15px); }
+            60% { transform: translate(-170px, -15px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        @keyframes cust48Pickup {
+            0% { transform: translate(0, 0); }
+            40% { transform: translate(-110px, -15px); }
+            60% { transform: translate(-110px, -15px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .animate-pickup-42 {
+            animation: cust42Pickup 2.5s ease-in-out forwards;
+        }
+
+        .animate-pickup-45 {
+            animation: cust45Pickup 2.5s ease-in-out forwards;
+        }
+
+        .animate-pickup-48 {
+            animation: cust48Pickup 2.5s ease-in-out forwards;
+        }
+
+        /* Dancing Bear Animation */
+        @keyframes bearDance {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(-15deg) scale(1.1); }
+            50% { transform: rotate(0deg) scale(1); }
+            75% { transform: rotate(15deg) scale(1.1); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+        .dancing-bear {
+            animation: bearDance 0.5s infinite ease-in-out;
+        }
+
+        /* Scratch-style blocks used in the Broadcast simulator */
+        .scratch-stack { min-width: 100%; }
+        .scratch-block {
+            position: relative;
+            color: #fff;
+            font-family: 'Fira Code', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1.25;
+            padding: 9px 11px;
+            margin: 0;
+            min-height: 35px;
+            box-shadow: inset 0 -2px 0 rgba(0,0,0,.14), 0 2px 4px rgba(0,0,0,.25);
+            border-radius: 5px;
+            z-index: 1;
+        }
+        .scratch-stack > .scratch-block + .scratch-block { margin-top: -2px; }
+        .scratch-event { background: #FFBF00; }
+        .scratch-control { background: #FFAB19; }
+        .scratch-looks { background: #9966FF; }
+        .scratch-hat {
+            border-radius: 14px 5px 5px 5px;
+            padding-top: 11px;
+        }
+        .scratch-rounded-bottom { border-radius: 5px 5px 12px 12px; }
+        .scratch-input {
+            display: inline-block;
+            background: #fff;
+            color: #555;
+            border-radius: 10px;
+            padding: 3px 7px;
+            margin-left: 3px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,.15);
+        }
+        .scratch-input-light { color: #555; }
+        .scratch-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            color: #555;
+            border-radius: 50%;
+            min-width: 24px;
+            height: 20px;
+            margin-left: 4px;
+            font-family: 'Poppins', sans-serif;
+        }
+        .scratch-nested {
+            margin: 5px 0 -4px 4px;
+            padding: 7px 8px;
+            background: rgba(0,0,0,.13);
+            border-left: 5px solid rgba(255,255,255,.75);
+            border-radius: 0 4px 4px 0;
+            font-size: 9px;
+        }
+        
+.scratch-script-card { transition: border-color .2s ease, opacity .2s ease, transform .2s ease, box-shadow .2s ease; }
+.scratch-script-card.selected-scratch-script { border-color: #9966FF; opacity: 1; box-shadow: 0 0 18px rgba(153,102,255,.28); transform: translateY(-1px); }
+.scratch-script-card:not(.selected-scratch-script) { opacity: .55; }
+.scratch-script-card.selected-scratch-script .scratch-block { filter: saturate(1.08); }
+.scratch-block.block-highlight {
+            outline: 3px solid #FFD071;
+            box-shadow: 0 0 16px #FFD071, inset 0 -2px 0 rgba(0,0,0,.14);
+            z-index: 5;
+        }
+
+        /* Scratch Block Simulation Glow */
+        .block-highlight {
+            outline: 3px solid #FFD071;
+            box-shadow: 0 0 12px #FFD071;
+        }
+    </style>
+</head>
+
+<body>
+<div class="slide-stage">
+
+<!-- Header Bar -->
+<header class="absolute top-0 left-0 w-full bg-alphagen-purple px-4 py-3.5 flex flex-wrap items-center justify-between gap-3 text-white shadow-md rounded-2xl z-50">
+  <div class="flex items-center gap-3">
+    <span class="bg-alphagen-yellow text-alphagen-nearBlack px-4 py-2 rounded-xl font-extrabold text-xs md:text-sm">ALPHAGEN LEARNING</span>
+    <span class="font-extrabold text-base md:text-xl">Scratch — Broadcast & Receive Messages</span>
+  </div>
+  <div class="flex items-center gap-2" id="header-dots-container"></div>
+  <div class="flex items-center gap-3">
+    <span id="slide-counter-pill" class="text-xs font-bold text-alphagen-purple bg-alphagen-purpleGhost px-3 py-1 rounded-full border border-alphagen-purplePale">Slide 1 / 6</span>
+    <select id="slide-dropdown" onchange="goToSlide(parseInt(this.value))" class="text-xs font-bold text-alphagen-nearBlack bg-alphagen-lightGrey hover:bg-slate-200 border border-slate-200 px-3 py-1 rounded-xl cursor-pointer focus:outline-none focus:border-alphagen-purple transition">
+      <option value="1">1. Welcome</option>
+      <option value="2">2. Hawker Stall Analogy</option>
+      <option value="3">3. Let's Understand Broadcast</option>
+      <option value="4">4. Broadcast Simulator</option>
+      <option value="5">5. Code Builder & Stage</option>
+      <option value="6">6. Quiz</option>
+    </select>
+    <button onclick="toggleAudio()" id="audio-btn" class="w-8 h-8 rounded-xl bg-alphagen-purpleDark hover:bg-alphagen-purpleMid text-white flex items-center justify-center text-xs transition btn-interactive" title="Toggle Sound">
+      <i class="fa-solid fa-volume-high"></i>
+    </button>
+  </div>
+</header>
+
+
+<!-- SLIDE 1: Title Slide -->
+<div id="slide-1" class="slide-panel active justify-center items-center text-center">
+  <div class="inline-flex items-center gap-2 bg-alphagen-purpleGhost border border-alphagen-purplePale text-alphagen-purple text-xs font-extrabold px-4 py-2 rounded-full mb-6 tracking-wider">
+    <i class="fa-solid fa-sparkles text-alphagen-yellowDark"></i> INTERACTIVE SCRATCH LESSON
+  </div>
+  <h1 class="text-5xl md:text-6xl font-extrabold text-alphagen-nearBlack mb-5 tracking-tight">
+    Scratch <span class="spark-wavy-underline">Broadcast</span> & Receive!
+  </h1>
+ 
+  <button onclick="nextSlide(); playSound('pop')" class="bg-alphagen-yellow hover:bg-alphagen-yellowDark text-alphagen-nearBlack font-extrabold text-lg px-9 py-4 rounded-2xl shadow-lg btn-interactive flex items-center gap-3">
+    <span>Start Exploring!</span><i class="fa-solid fa-arrow-right"></i>
+  </button>
+</div>
+
+<!-- SLIDE 3: Real-World Example 2 (Hawker Centre) -->
+<div id="slide-2" class="slide-panel bg-white">
+  <div>
+    <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3 py-1 rounded-md border border-alphagen-purplePale">Real-World Example #2</span>
+
+    <h2 class="text-2xl md:text-3xl font-bold text-alphagen-nearBlack mt-2 mb-1">
+      Hawker Centre: Specific Ticket Call
+    </h2>
+
+    <p class="text-xs md:text-sm text-alphagen-darkGrey">
+      The stall uncle calls an order number. Only the customer holding that number responds!
+    </p>
+  </div>
+
+  <div class="grid grid-cols-12 gap-6 my-auto items-center">
+
+    <!-- Interactive Hawker Centre Stage -->
+    <div class="col-span-7 bg-amber-950 border-2 border-amber-800 rounded-2xl p-4 text-center relative overflow-hidden h-72 shadow-inner flex flex-col justify-between">
+
+      <!-- Stall Header -->
+      <div class="flex items-center justify-between text-white text-xs font-bold z-10">
+        <span class="bg-amber-900 px-3 py-1 rounded-full border border-amber-700">
+          🍜 HAWKER STALL #01-12
+        </span>
+
+        <span id="hawker-status"
+              class="bg-alphagen-yellow text-alphagen-nearBlack px-3 py-1 rounded-full font-extrabold">
+          Stall Uncle Ready
+        </span>
+      </div>
+
+      <!-- Main Scene -->
+      <div class="relative h-44 w-full flex items-center justify-between px-4 z-10">
+
+        <!-- Stall Uncle / Sender -->
+        <div class="flex flex-col items-center relative z-20">
+
+          <div id="uncle-waves"
+               class="hidden absolute -top-3 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full border-2 border-alphagen-yellow whistle-wave pointer-events-none">
+          </div>
+
+          <div id="uncle-bubble"
+               class="hidden absolute -top-9 bg-white text-alphagen-nearBlack font-mono font-extrabold text-[11px] px-2.5 py-1 rounded-lg border-2 border-amber-500 shadow-md whitespace-nowrap animate-bounce z-30">
+            "NUMBER <span id="bubble-target-num">45</span>!" 🍜
+          </div>
+
+          <div class="text-5xl">👨‍🍳</div>
+
+          <span class="text-[10px] bg-black/60 text-amber-200 font-bold px-2 py-0.5 rounded-full mt-1">
+            Stall Uncle
+          </span>
+
+          <button onclick="callHawkerNumber()"
+                  class="mt-2 bg-alphagen-yellow hover:bg-alphagen-yellowDark text-alphagen-nearBlack font-extrabold text-[11px] px-3 py-1.5 rounded-lg shadow btn-interactive flex items-center gap-1">
+
+            📢 Call "Number <span id="btn-target-num">45</span>!"
+          </button>
+        </div>
+
+        <!-- Divider -->
+        <div class="h-28 w-0.5 border-r-2 border-dashed border-amber-700/50"></div>
+
+        <!-- Customers -->
+        <!-- Customers -->
+<div class="flex items-end gap-5 relative z-10">
+
+    <!-- Customer 42 -->
+    <div class="flex flex-col items-center transition-all cursor-pointer"
+         id="cust-42"
+         onclick="selectTicket(42)">
+        <span id="bubble-42"
+              class="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded mb-1 font-mono">
+            Waiting...
+        </span>
+        <span id="emoji-42" class="text-4xl transition-all">👨‍💼</span>
+        <button id="badge-42"
+                onclick="event.stopPropagation(); selectTicket(42)"
+                class="text-[10px] bg-slate-900 text-amber-300 font-mono font-bold px-2 py-0.5 rounded-full mt-1 border border-slate-700">
+            Ticket #42
+        </button>
+    </div>
+
+    <!-- Customer 45 -->
+    <div class="flex flex-col items-center transition-all cursor-pointer"
+         id="cust-45"
+         onclick="selectTicket(45)">
+        <span id="bubble-45"
+              class="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded mb-1 font-mono">
+            Waiting...
+        </span>
+        <span id="emoji-45" class="text-4xl transition-all">🧍‍♂️</span>
+        <button id="badge-45"
+                onclick="event.stopPropagation(); selectTicket(45)"
+                class="text-[10px] bg-alphagen-purple text-yellow-300 font-mono font-extrabold px-2 py-0.5 rounded-full mt-1 border border-purple-400">
+            Ticket #45
+        </button>
+    </div>
+
+    <!-- Customer 48 -->
+    <div class="flex flex-col items-center transition-all cursor-pointer"
+         id="cust-48"
+         onclick="selectTicket(48)">
+        <span id="bubble-48"
+              class="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded mb-1 font-mono">
+            Waiting...
+        </span>
+        <span id="emoji-48" class="text-4xl transition-all">👩‍🌾</span>
+        <button id="badge-48"
+                onclick="event.stopPropagation(); selectTicket(48)"
+                class="text-[10px] bg-slate-900 text-amber-300 font-mono font-bold px-2 py-0.5 rounded-full mt-1 border border-slate-700">
+            Ticket #48
+        </button>
+    </div>
+
+</div>
+      </div>
+
+      <!-- Footer -->
+      <p class="text-[11px] text-amber-200 z-10 font-semibold">
+        Everyone hears the message, but only the person holding
+        <strong>Number <span id="footer-target-num">45</span></strong>
+        reacts & collects order!
+      </p>
+    </div>
+
+    <!-- Warm-up Question -->
+    <div class="col-span-5 flex flex-col justify-center">
+      <div class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale rounded-2xl p-5 space-y-4">
+        <div class="flex items-center gap-2 text-alphagen-purple">
+          <i class="fa-solid fa-circle-question text-lg"></i>
+          <h3 class="font-extrabold text-xs uppercase tracking-wider">Warm-up Question</h3>
+        </div>
+        <p class="text-sm font-bold text-alphagen-nearBlack">
+          The uncle calls “Number 45!” Who should collect the food?
+        </p>
+        <div class="grid grid-cols-1 gap-2">
+          <button onclick="checkHawkerWarmup(this, false)" class="quiz-option text-xs py-3">Customer holding Ticket #42</button>
+          <button onclick="checkHawkerWarmup(this, true)" class="quiz-option text-xs py-3">Customer holding Ticket #45</button>
+          <button onclick="checkHawkerWarmup(this, false)" class="quiz-option text-xs py-3">Customer holding Ticket #48</button>
+        </div>
+        <p id="hawker-warmup-feedback" class="text-xs font-bold text-center text-alphagen-darkGrey min-h-8 flex items-center justify-center">
+          Choose the correct customer.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback -->
+  <div id="hawker-feedback"
+       class="bg-alphagen-purpleGhost border-l-4 border-alphagen-purple p-3 rounded-r-xl text-xs md:text-sm text-alphagen-purple font-bold text-center min-h-[44px] flex items-center justify-center">
+
+    Select a ticket number above and click
+    "📢 Call Number <span class="selected-num-text">45</span>!"
+    to send the order!
+
+  </div>
+</div>
+
+<!-- SLIDE 4: Concept Explanation -->
+<div id="slide-3" class="slide-panel bg-white">
+  <div>
+    <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3 py-1 rounded-md border border-alphagen-purplePale">Let's Understand</span>
+    <h2 class="text-2xl md:text-3xl font-bold text-alphagen-nearBlack mt-2 mb-1">How Scratch Broadcast Works</h2>
+    <p class="text-xs md:text-sm text-alphagen-darkGrey">Click each block below to see how the sender and receiver blocks connect!</p>
+  </div>
+
+  <div class="grid grid-cols-2 gap-6 my-auto">
+    <!-- Sender Card -->
+    <div onclick="explainCard(1)" class="bg-alphagen-purpleGhost border-2 border-alphagen-purplePale hover:border-alphagen-purple rounded-2xl p-6 cursor-pointer btn-interactive space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="bg-alphagen-yellow text-alphagen-nearBlack font-bold text-xs px-3 py-1 rounded-full">SENDER BLOCK</span>
+        <i class="fa-solid fa-bullhorn text-alphagen-purple text-xl"></i>
+      </div>
+      <div class="bg-[#FFBF00] text-white font-mono font-bold text-xs p-3 rounded-xl shadow-md border-b-4 border-yellow-600 inline-block">
+        broadcast <span class="bg-white/30 px-2 py-0.5 rounded">dance_party ▼</span>
+      </div>
+      <h3 class="font-extrabold text-base text-alphagen-purple">1. Broadcast Message</h3>
+      
+    </div>
+
+    <!-- Receiver Card -->
+    <div onclick="explainCard(2)" class="bg-alphagen-cyanPale border-2 border-cyan-200 hover:border-alphagen-cyanDark rounded-2xl p-6 cursor-pointer btn-interactive space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="bg-alphagen-cyan text-alphagen-cyanDark font-bold text-xs px-3 py-1 rounded-full">RECEIVER BLOCK</span>
+        <i class="fa-solid fa-envelope-open-text text-alphagen-cyanDark text-xl"></i>
+      </div>
+      <div class="bg-[#FFBF00] text-white font-mono font-bold text-xs p-3 rounded-xl shadow-md border-b-4 border-yellow-600 inline-block">
+        when I receive <span class="bg-white/30 px-2 py-0.5 rounded">dance_party ▼</span>
+      </div>
+      <h3 class="font-extrabold text-base text-alphagen-cyanDark">2. When I Receive</h3>
+      
+    </div>
+  </div>
+
+  <div id="explain-feedback" class="bg-alphagen-purpleGhost border border-alphagen-purplePale p-3 rounded-2xl text-xs md:text-sm text-alphagen-purple font-bold text-center">
+    Click on either Scratch block card to learn more!
+  </div>
+</div>
+
+<!-- SLIDE 6: Interactive Scratch Broadcast Simulator -->
+<div id="slide-4" class="slide-panel bg-white">
+  <div>
+    <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3 py-1 rounded-md border border-alphagen-purplePale">Interactive Scratch Simulator</span>
+    <h2 class="text-2xl md:text-3xl font-bold text-alphagen-nearBlack mt-2 mb-1">Broadcast Simulator</h2>
+    <p class="text-xs md:text-sm text-alphagen-darkGrey">Run the broadcaster script and watch the receiver respond.</p>
+  </div>
+
+  <div class="grid grid-cols-12 gap-5 my-auto items-stretch">
+    <!-- LEFT: Scratch workspace -->
+    <div class="col-span-7 bg-slate-900 border-2 border-slate-800 rounded-2xl p-4 flex flex-col text-white shadow-lg">
+      <div class="grid grid-cols-1 gap-3 flex-grow">
+        <!-- CODE 1 -->
+        <div id="sim-code1-card" class="scratch-script-card selected-scratch-script bg-slate-950 rounded-xl border-2 border-alphagen-purple p-3 overflow-hidden">
+          <div class="flex items-center justify-between text-amber-400 font-bold border-b border-slate-800 pb-2 mb-3 text-[10px]">
+            <span>🐱 BROADCASTER SCRIPT</span><span class="text-[9px] bg-alphagen-purple px-2 py-1 rounded-full text-white">BROADCAST</span>
+          </div>
+          <div class="scratch-stack flex flex-col items-start">
+            <div id="sim-code-cat1-1" class="scratch-block scratch-event scratch-hat">when 🟢 clicked</div>
+            <div id="sim-code-cat1-2" class="scratch-block scratch-event">broadcast <span class="scratch-input">dance_party ▼</span></div>
+            <div id="sim-code-cat1-3" class="scratch-block scratch-looks scratch-rounded-bottom">say <span class="scratch-input">I'm moving on!</span> for <span class="scratch-number">2</span> secs</div>
+          </div>
+        </div>
+
+        <!-- RECEIVER -->
+        <div class="col-span-2 bg-slate-950 rounded-xl border border-slate-800 p-3 mt-1">
+          <div class="flex items-center justify-between text-cyan-400 font-bold border-b border-slate-800 pb-2 mb-3 text-[10px]">
+            <span>🐻 RECEIVER SCRIPT</span><span class="text-[9px] bg-slate-800 px-2 py-1 rounded-full">LISTENS FOR MESSAGE</span>
+          </div>
+          <div class="scratch-stack flex flex-col items-start max-w-md">
+            <div id="sim-code-bear-1" class="scratch-block scratch-event scratch-hat">when I receive <span class="scratch-input">dance_party ▼</span></div>
+            <div id="sim-code-bear-2" class="scratch-block scratch-control">repeat <span class="scratch-number">4</span><div class="scratch-nested">turn ↷ 15 degrees<br>wait 0.5 secs</div></div>
+            <div id="sim-code-bear-3" class="scratch-block scratch-looks scratch-rounded-bottom">say <span class="scratch-input">Dance Complete!</span> for <span class="scratch-number">1</span> sec</div>
+          </div>
+        </div>
+      </div>
+
+     
+    </div>
+
+    <!-- RIGHT: Scratch Stage -->
+    <div class="col-span-5 bg-slate-950 rounded-2xl p-4 border-2 border-slate-800 text-white flex flex-col justify-between relative overflow-hidden shadow-lg">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+        <button onclick="runScratchSim()" id="sim-run-btn" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-3 py-1 rounded-lg text-xs flex items-center gap-1.5 btn-interactive shadow">
+          <i class="fa-solid fa-play"></i> Run Selected Code
+        </button>
+        <button onclick="resetScratchSim()" class="bg-red-500 hover:bg-red-400 text-white font-extrabold px-2.5 py-1 rounded-lg text-xs btn-interactive" title="Stop Project"><i class="fa-solid fa-stop"></i></button>
+      </div>
+
+      <div class="relative h-48 w-full bg-slate-900 border border-slate-800 rounded-xl my-2 flex items-center justify-around overflow-hidden">
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        <div class="flex flex-col items-center relative z-10">
+          <div id="sim-cat-speech" class="hidden absolute -top-10 bg-white text-slate-900 font-mono font-bold text-[10px] px-2.5 py-1 rounded-xl shadow-lg border-2 border-slate-700 whitespace-nowrap animate-bounce z-20">"I'm moving on!"</div>
+          <div id="sim-cat-sprite" class="text-6xl transition-transform">🐱</div>
+          <span class="text-[10px] bg-slate-800/80 text-amber-300 font-mono font-bold px-2 py-0.5 rounded-full mt-1 border border-slate-700">Broadcaster</span>
+        </div>
+        <div id="sim-signal-wave" class="hidden absolute left-1/2 -translate-x-1/2 w-24 h-24 rounded-full border-4 border-alphagen-yellow signal-wave pointer-events-none"></div>
+        <div class="flex flex-col items-center relative z-10">
+          <div id="sim-bear-speech" class="hidden absolute -top-10 bg-white text-slate-900 font-mono font-bold text-[10px] px-2.5 py-1 rounded-xl shadow-lg border-2 border-slate-700 whitespace-nowrap animate-bounce z-20">"Dance Party!" 💃</div>
+          <div id="sim-bear-sprite" class="text-6xl transition-transform">🐻</div>
+          <span class="text-[10px] bg-slate-800/80 text-cyan-300 font-mono font-bold px-2 py-0.5 rounded-full mt-1 border border-slate-700">Receiver</span>
+        </div>
+      </div>
+      <div id="sim-engine-log" class="text-[10px] font-mono text-emerald-300 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 mt-2" aria-live="polite">&gt; Engine Ready. Click "Run Selected Code" to send the message.</div>
+    </div>
+  </div>
+
+  <div class="bg-alphagen-yellowPale border border-yellow-300 p-2.5 rounded-2xl text-xs text-alphagen-nearBlack font-bold text-center">
+    💡 <strong>The broadcaster sends the message.</strong> The Bear receiver responds because it is listening for the broadcast message.
+  </div>
+</div>
+
+<!-- SLIDE 10: Interactive Code Builder & Live Output Simulator -->
+<div id="slide-5" class="slide-panel bg-white">
+  <div>
+    <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3 py-1 rounded-md border border-alphagen-purplePale">Code Builder</span>
+    <h2 class="text-2xl md:text-3xl font-bold text-alphagen-nearBlack mt-2 mb-1">Build & Run Broadcast</h2>
+    <p class="text-xs md:text-sm text-alphagen-darkGrey">Click blocks to build code, then press "Run Code"!</p>
+  </div>
+
+  <div class="grid grid-cols-12 gap-5 my-auto items-stretch">
+    <!-- Blocks Inventory -->
+    <div class="col-span-4 bg-alphagen-purpleGhost border-2 border-alphagen-purplePale rounded-2xl p-4 space-y-2">
+      <h3 class="font-extrabold text-xs text-alphagen-purple uppercase">Available Blocks</h3>
+      <button onclick="addBlockToBuilder('when_clicked')" class="w-full text-left bg-[#FFBF00] text-white font-mono font-bold text-xs p-2.5 rounded-xl shadow btn-interactive">
+        when green flag clicked
+      </button>
+      <button onclick="addBlockToBuilder('broadcast_party')" class="w-full text-left bg-[#FFBF00] text-white font-mono font-bold text-xs p-2.5 rounded-xl shadow btn-interactive">
+        broadcast [party ▼]
+      </button>
+      <button onclick="addBlockToBuilder('when_party')" class="w-full text-left bg-[#FFBF00] text-white font-mono font-bold text-xs p-2.5 rounded-xl shadow btn-interactive">
+        when I receive [party ▼]
+      </button>
+      <button onclick="addBlockToBuilder('say_hello')" class="w-full text-left bg-[#4C97FF] text-white font-mono font-bold text-xs p-2.5 rounded-xl shadow btn-interactive">
+        say "Let's Dance!" for 2 secs
+      </button>
+      <button onclick="clearBuilder()" class="w-full bg-white border border-alphagen-coral text-alphagen-coral font-bold text-xs p-2 rounded-xl mt-2 btn-interactive">
+        Clear All
+      </button>
+    </div>
+
+    <!-- Script Drop Workspace -->
+    <div class="col-span-4 bg-slate-100 border-2 border-slate-300 rounded-2xl p-4 flex flex-col justify-between">
+      <div>
+        <h3 class="font-extrabold text-xs text-alphagen-nearBlack uppercase mb-2">Your Script Area</h3>
+        <div id="builder-workspace" class="space-y-2 min-h-[160px]">
+          <p id="builder-empty-text" class="text-xs text-alphagen-midGrey italic text-center py-8">Click blocks on the left to stack them here!</p>
+        </div>
+      </div>
+
+      <button onclick="runBuiltCode()" class="w-full bg-alphagen-yellow hover:bg-alphagen-yellowDark text-alphagen-nearBlack font-extrabold py-3 px-4 rounded-xl text-xs shadow-md btn-interactive flex items-center justify-center gap-2">
+        <i class="fa-solid fa-play"></i> Run Code
+      </button>
+    </div>
+
+    <!-- Retro Terminal Stage -->
+    <div class="col-span-4 bg-slate-950 rounded-2xl p-4 border-2 border-slate-800 text-white flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+          <span class="text-[11px] font-mono text-emerald-400"><i class="fa-solid fa-terminal mr-1"></i> STAGE CONSOLE</span>
+          <span class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+        </div>
+        <div id="stage-output" class="font-mono text-xs space-y-1 text-slate-300 min-h-[140px] p-2">
+          > Stage Initialized.<br>> Waiting for code run...
+        </div>
+      </div>
+      <div id="stage-sprite-avatar" class="text-center text-4xl py-2">
+        🐱
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-alphagen-yellowPale border-l-4 border-alphagen-yellowDark p-2.5 rounded-r-xl text-xs text-alphagen-nearBlack font-bold">
+    Task: Stack <code>when green flag clicked</code> + <code>broadcast [party]</code> to test the stage trigger!
+  </div>
+</div>
+
+<!-- SLIDE 11: Final Quiz -->
+<div id="slide-6" class="slide-panel bg-white">
+  <div class="text-center">
+    <span class="text-xs uppercase font-extrabold tracking-wider text-alphagen-purple bg-alphagen-purpleGhost px-3 py-1 rounded-md border border-alphagen-purplePale">Final Quiz</span>
+    <h2 class="text-3xl font-extrabold text-alphagen-nearBlack mt-2 mb-2">Check Your Understanding!</h2>
+    <p class="text-xs md:text-sm text-alphagen-darkGrey">Choose the Scratch block that completes each task.</p>
+  </div>
+
+  <div class="max-w-3xl mx-auto w-full space-y-5 my-auto">
+    <div class="bg-white border-2 border-alphagen-purplePale rounded-2xl p-4">
+      <p class="text-sm font-bold text-alphagen-nearBlack mb-3">Q1: Which block sends a message to the other sprites?</p>
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="checkPrepQuiz(1, this, true)" class="quiz-option p-3 flex justify-center">
+          <span class="scratch-block scratch-event">broadcast <span class="scratch-input">alien_dance ▼</span></span>
+        </button>
+        <button onclick="checkPrepQuiz(1, this, false)"
+        class="quiz-option p-3 flex justify-center">
+    <span class="scratch-block scratch-control">
+        wait <span class="scratch-number">1</span> seconds
+    </span>
+</button>
+      </div>
+    </div>
+
+    <div class="bg-white border-2 border-alphagen-purplePale rounded-2xl p-4">
+      <p class="text-sm font-bold text-alphagen-nearBlack mb-3">Q2: Which block starts a script when a sprite receives the message?</p>
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="checkPrepQuiz(2, this, false)" class="quiz-option p-3 flex justify-center">
+          <span class="scratch-block scratch-event scratch-hat">when <span class="scratch-input">space ▼</span> key pressed</span>
+        </button>
+        <button onclick="checkPrepQuiz(2, this, true)" class="quiz-option p-3 flex justify-center">
+          <span class="scratch-block scratch-event scratch-hat">when I receive <span class="scratch-input">alien_dance ▼</span></span>
+        </button>
+      </div>
+    </div>
+    <div class="text-center pt-1">
+      <button onclick="finishLesson()" class="bg-alphagen-purple hover:bg-alphagen-purpleDark text-white font-extrabold py-3 px-8 rounded-xl shadow-md btn-interactive">
+        <i class="fa-solid fa-flag-checkered mr-2"></i> Finish Lesson
+      </button>
+    </div>
+  </div>
+</div>
+
+</div> <!-- end .slide-stage -->
+
+<!-- NAVIGATION CONTROL BAR -->
+<div class="nav-bar">
+  <button id="prev-btn" onclick="prevSlide()" class="nav-btn btn-interactive" disabled>
+    <i class="fa-solid fa-arrow-left"></i> Previous
+  </button>
+  
+  <div class="flex items-center gap-2" id="nav-dots-container"></div>
+
+  <button id="next-btn" onclick="nextSlide()" class="nav-btn btn-interactive">
+    Next <i class="fa-solid fa-arrow-right"></i>
+  </button>
+</div>
+
+<!-- AUDIO EFFECTS & INTERACTIVE SCRIPT -->
+<script>
+    let currentSlide = 1;
+    const totalSlides = 6;
+    let soundEnabled = true;
+
+    // Web Audio API Sound Generator
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSound(type) {
+        if (!soundEnabled) return;
+        try {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'pop') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'whistle') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(2400, now);
+                osc.frequency.setValueAtTime(2800, now + 0.1);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } else if (type === 'shout') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.2);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(110, now + 0.15);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+        } catch(e) {
+            console.log('Audio error', e);
+        }
+    }
+
+    function toggleAudio() {
+        soundEnabled = !soundEnabled;
+        const btn = document.getElementById('audio-btn');
+        if (soundEnabled) {
+            btn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+            btn.classList.remove('opacity-50');
+        } else {
+            btn.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+            btn.classList.add('opacity-50');
+        }
+    }
+
+    function buildDots() {
+        const headerDots = document.getElementById('header-dots-container');
+        const navDots = document.getElementById('nav-dots-container');
+        headerDots.innerHTML = '';
+        navDots.innerHTML = '';
+
+        for (let i = 1; i <= totalSlides; i++) {
+            const dot = document.createElement('div');
+            dot.className = `dot-indicator ${i === currentSlide ? 'active' : ''}`;
+            dot.onclick = () => goToSlide(i);
+            
+            navDots.appendChild(dot);
+            headerDots.appendChild(dot.cloneNode(true));
+        }
+    }
+
+    function updateNav() {
+        for (let i = 1; i <= totalSlides; i++) {
+            const panel = document.getElementById(`slide-${i}`);
+            if (panel) {
+                if (i === currentSlide) {
+                    panel.classList.add('active');
+                } else {
+                    panel.classList.remove('active');
+                }
+            }
+        }
+
+        document.getElementById('slide-counter-pill').innerText = `Slide ${currentSlide} / ${totalSlides}`;
+        document.getElementById('slide-dropdown').value = currentSlide;
+
+        document.getElementById('prev-btn').disabled = (currentSlide === 1);
+        document.getElementById('next-btn').disabled = (currentSlide === totalSlides);
+
+        buildDots();
+    }
+
+    function goToSlide(num) {
+        if (num >= 1 && num <= totalSlides) {
+            currentSlide = num;
+            updateNav();
+            playSound('pop');
+        }
+    }
+
+    function nextSlide() {
+        if (currentSlide < totalSlides) {
+            goToSlide(currentSlide + 1);
+        }
+    }
+
+    function prevSlide() {
+        if (currentSlide > 1) {
+            goToSlide(currentSlide - 1);
+        }
+    }
+
+    // SLIDE 2: Referee Whistle & Soccer Animation Logic
+    function blowRefereeWhistle() {
+        playSound('whistle');
+
+        const waves = document.getElementById('whistle-waves');
+        const status = document.getElementById('match-status');
+        const player1 = document.getElementById('player-1');
+        const player2 = document.getElementById('player-2');
+        const player1Box = document.getElementById('player-1-box');
+        const player2Box = document.getElementById('player-2-box');
+        const ballBox = document.getElementById('ball-box');
+
+        // Show Whistle Broadcast Signal Waves
+        waves.classList.remove('hidden');
+
+        // Update Field Status
+        status.innerText = '🔊 WHISTLE BLOWN! BROADCAST SENT!';
+        status.className = 'bg-green-400 text-slate-950 px-3 py-1 rounded-full animate-bounce';
+
+        // Trigger Animations on Players & Soccer Ball
+        player1.innerText = '🏃‍♂️';
+        player2.innerText = '🏃‍♀️';
+        
+        player1Box.classList.add('running-player-1');
+        player2Box.classList.add('running-player-2');
+        ballBox.classList.add('rolling-ball');
+
+        // Feedback Text Update
+        const feedback = document.getElementById('hook-feedback');
+        feedback.innerHTML = '🔊 <strong>WHISTLE BROADCAST RECEIVED!</strong> Both players heard the sound at the same time and started playing!';
+
+        setTimeout(() => {
+            waves.classList.add('hidden');
+        }, 1200);
+    }
+
+    function checkHookAnswer(btn, isCorrect) {
+        const parent = btn.parentElement;
+        const options = parent.querySelectorAll('.quiz-option');
+        options.forEach(opt => opt.classList.remove('selected-correct', 'selected-wrong'));
+
+        const feedback = document.getElementById('hook-feedback');
+        if (isCorrect) {
+            btn.classList.add('selected-correct');
+            feedback.innerHTML = '🎉 <strong>Spot on!</strong> Broadcast works exactly like a referee whistle: it alerts ALL sprites at once!';
+            blowRefereeWhistle();
+            confetti({ particleCount: 30, spread: 60, origin: { y: 0.8 } });
+        } else {
+            btn.classList.add('selected-wrong');
+            feedback.innerHTML = '❌ <strong>Try again!</strong> Everyone on the field hears the whistle at the exact same time!';
+            playSound('wrong');
+        }
+    }
+
+    // SLIDE 2: Hawker Centre Warm-up Question
+    function checkHawkerWarmup(btn, isCorrect) {
+        const options = btn.parentElement.querySelectorAll('.quiz-option');
+        options.forEach(option => option.classList.remove('selected-correct', 'selected-wrong'));
+        const feedback = document.getElementById('hawker-warmup-feedback');
+        if (isCorrect) {
+            btn.classList.add('selected-correct');
+            feedback.innerHTML = '✓ Correct! Ticket #45 matches the number called.';
+            playSound('correct');
+            confetti({ particleCount: 30, spread: 60, origin: { y: 0.75 } });
+        } else {
+            btn.classList.add('selected-wrong');
+            feedback.innerHTML = 'Not quite. Look for the customer holding Ticket #45.';
+            playSound('wrong');
+        }
+    }
+
+    // SLIDE 3: Hawker Stall Logic
+    let selectedTicket = 45;
+    let isAnimating = false;
+
+    function selectTicket(num) {
+    if (isAnimating) return;
+
+    selectedTicket = num;
+
+    document.getElementById('btn-target-num').innerText = num;
+    document.getElementById('bubble-target-num').innerText = num;
+    document.getElementById('footer-target-num').innerText = num;
+
+    document.querySelectorAll('.selected-num-text').forEach(el => {
+        el.innerText = num;
+    });
+
+    [42, 45, 48].forEach(n => {
+        const badge = document.getElementById(`badge-${n}`);
+
+        if (n === num) {
+            badge.className =
+                "text-[10px] bg-alphagen-purple text-yellow-300 font-mono font-extrabold px-2 py-0.5 rounded-full mt-1 border border-purple-400";
+        } else {
+            badge.className =
+                "text-[10px] bg-slate-900 text-amber-300 font-mono font-bold px-2 py-0.5 rounded-full mt-1 border border-slate-700";
+        }
+    });
+
+    document.getElementById('hawker-feedback').innerText =
+        `Ticket #${num} selected! Click "📢 Call Number ${num}!" to broadcast signal.`;
+
+    playSound('pop');
+}
+
+    function callHawkerNumber() {
+        if (isAnimating) return;
+
+        isAnimating = true;
+
+        const uncleWaves = document.getElementById('uncle-waves');
+        const uncleBubble = document.getElementById('uncle-bubble');
+        const status = document.getElementById('hawker-status');
+        const feedback = document.getElementById('hawker-feedback');
+
+        // Broadcast signal
+        uncleWaves.classList.remove('hidden');
+        uncleBubble.classList.remove('hidden');
+
+        status.innerText =
+            `📢 "NUMBER ${selectedTicket}!" BROADCASTED!`;
+
+        status.className =
+            'bg-alphagen-yellow text-alphagen-nearBlack px-3 py-1 rounded-full animate-bounce font-extrabold';
+
+        feedback.innerText =
+            `📢 Broadcast sent: "Number ${selectedTicket}!" All customers heard the broadcast!`;
+
+        playSound('shout');
+
+        // Process every receiver
+        [42, 45, 48].forEach(num => {
+
+            const custEl = document.getElementById(`cust-${num}`);
+            const bubble = document.getElementById(`bubble-${num}`);
+            const emoji = document.getElementById(`emoji-${num}`);
+
+            if (num === selectedTicket) {
+
+                // Matching receiver responds
+                bubble.innerText = "That's me! 🍜";
+
+                bubble.className =
+                    "text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded mb-1 animate-bounce";
+
+                emoji.innerText = "🏃‍♂️";
+
+                custEl.classList.add(`animate-pickup-${num}`);
+
+                setTimeout(() => {
+                    emoji.innerText = "😋🍜";
+                    bubble.innerText = "Got my food!";
+                }, 1250);
+
+                setTimeout(() => {
+                    custEl.classList.remove(`animate-pickup-${num}`);
+
+                    emoji.innerText = "🙋‍♂️";
+                    bubble.innerText = "Finished!";
+
+                    bubble.className =
+                        "text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded mb-1 font-mono";
+                }, 2600);
+
+            } else {
+
+                // Non-matching receivers ignore the broadcast
+                bubble.innerText = "Not mine...";
+
+                bubble.className =
+                    "text-[10px] bg-red-950/80 text-red-300 px-1.5 py-0.5 rounded mb-1 font-mono opacity-60";
+
+                setTimeout(() => {
+                    bubble.innerText = "Waiting...";
+
+                    bubble.className =
+                        "text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded mb-1 font-mono";
+                }, 2600);
+            }
+        });
+
+        // Finish animation
+        setTimeout(() => {
+
+            uncleWaves.classList.add('hidden');
+            uncleBubble.classList.add('hidden');
+
+            status.innerText = 'Stall Uncle Ready';
+
+            status.className =
+                'bg-alphagen-yellow text-alphagen-nearBlack px-3 py-1 rounded-full font-extrabold';
+
+            feedback.innerText =
+                `Customer #${selectedTicket} received the message and collected their order! Try selecting another ticket.`;
+
+            playSound('correct');
+
+            isAnimating = false;
+
+        }, 2700);
+    }
+
+    // SLIDE 4: Card Explanations
+    function explainCard(num) {
+        const feedback = document.getElementById('explain-feedback');
+        if (num === 1) {
+            feedback.innerHTML = '📢 <strong>Sender:</strong> `broadcast` is placed in the sprite that initiates the event!';
+        } else {
+            feedback.innerHTML = '📩 <strong>Receiver:</strong> `when I receive` listens for that specific broadcast name!';
+        }
+        playSound('pop');
+    }
+
+    // SLIDE 5: Sorting
+    let sortedCount = 0;
+    function sortBlock(btn, category) {
+        const zone = document.getElementById(`zone-${category}`).querySelector('.zone-content');
+        zone.appendChild(btn);
+        btn.classList.remove('btn-interactive');
+        btn.disabled = true;
+        sortedCount++;
+
+        playSound('correct');
+
+        if (sortedCount === 4) {
+            const feedback = document.getElementById('sort-feedback');
+            feedback.innerHTML = '🏆 <strong>Awesome Sorting!</strong> Sender blocks trigger broadcasts, Receiver blocks wait for them!';
+            confetti({ particleCount: 40, spread: 70, origin: { y: 0.8 } });
+        }
+    }
+
+    // SLIDE 6: Interactive Scratch Code & Stage Simulator Logic
+let isSimRunning = false;
+let simRunId = 0;
+let simTimers = [];
+const waitMode = false;
+
+function clearSimTimers() {
+    simTimers.forEach(timer => clearTimeout(timer));
+    simTimers = [];
+}
+
+function scheduleSim(fn, delay) {
+    const timer = setTimeout(fn, delay);
+    simTimers.push(timer);
+    return timer;
+}
+
+function resetScratchSim() {
+    clearSimTimers();
+    isSimRunning = false;
+    simRunId++;
+
+    document.querySelectorAll('#slide-4 .scratch-block').forEach(block => block.classList.remove('block-highlight'));
+    document.getElementById('sim-cat-speech').classList.add('hidden');
+    document.getElementById('sim-bear-speech').classList.add('hidden');
+    document.getElementById('sim-signal-wave').classList.add('hidden');
+    document.getElementById('sim-bear-sprite').classList.remove('dancing-bear');
+    document.getElementById('sim-cat-sprite').innerText = '🐱';
+    document.getElementById('sim-bear-sprite').innerText = '🐻';
+    document.getElementById('sim-engine-log').innerText = '> Engine Ready. Click "Run Broadcast" to send the message.';
+}
+
+function runScratchSim() {
+    if (isSimRunning) return;
+    isSimRunning = true;
+    clearSimTimers();
+    const runId = ++simRunId;
+    const valid = () => isSimRunning && runId === simRunId;
+    const log = document.getElementById('sim-engine-log');
+    const catSpeech = document.getElementById('sim-cat-speech');
+    const bearSpeech = document.getElementById('sim-bear-speech');
+    const wave = document.getElementById('sim-signal-wave');
+    const bearSprite = document.getElementById('sim-bear-sprite');
+
+    playSound('pop');
+    const catPrefix = 'sim-code-cat1-';
+    document.getElementById(catPrefix + '1').classList.add('block-highlight');
+    log.innerText = '> Green flag clicked.';
+
+    scheduleSim(() => {
+        if (!valid()) return;
+        document.getElementById(catPrefix + '1').classList.remove('block-highlight');
+        document.getElementById(catPrefix + '2').classList.add('block-highlight');
+        wave.classList.remove('hidden');
+        playSound('whistle');
+        log.innerText = '> "dance_party" broadcast sent.';
+
+        // Receiver is triggered by whichever selected broadcast was run.
+        scheduleSim(() => {
+            if (!valid()) return;
+            document.getElementById('sim-code-bear-1').classList.add('block-highlight');
+            scheduleSim(() => {
+                if (!valid()) return;
+                document.getElementById('sim-code-bear-1').classList.remove('block-highlight');
+                document.getElementById('sim-code-bear-2').classList.add('block-highlight');
+                bearSpeech.innerText = '"Dance Party!" 💃';
+                bearSpeech.classList.remove('hidden');
+                bearSprite.classList.add('dancing-bear');
+                log.innerText = '> Bear received the message and started dancing.';
+            }, 250);
+        }, 250);
+
+        if (!waitMode) {
+            scheduleSim(() => {
+                if (!valid()) return;
+                document.getElementById(catPrefix + '2').classList.remove('block-highlight');
+                document.getElementById(catPrefix + '3').classList.add('block-highlight');
+                catSpeech.innerText = "\"I'm moving on!\"";
+                catSpeech.classList.remove('hidden');
+                log.innerText = '> Cat continued to its next block.';
+            }, 700);
+            scheduleSim(() => {
+                if (!valid()) return;
+                document.getElementById('sim-code-bear-2').classList.remove('block-highlight');
+                document.getElementById('sim-code-bear-3').classList.add('block-highlight');
+                bearSprite.classList.remove('dancing-bear');
+                bearSpeech.innerText = '"Dance Complete!"';
+            }, 2300);
+            scheduleSim(() => {
+                if (!valid()) return;
+                isSimRunning = false;
+                document.getElementById(catPrefix + '3').classList.remove('block-highlight');
+                document.getElementById('sim-code-bear-3').classList.remove('block-highlight');
+                log.innerText = '✅ CODE 1 finished. Code 2 was not executed.';
+                playSound('correct');
+            }, 3600);
+        } else {
+            scheduleSim(() => {
+                if (!valid()) return;
+                document.getElementById('sim-code-bear-2').classList.remove('block-highlight');
+                document.getElementById('sim-code-bear-3').classList.add('block-highlight');
+                bearSprite.classList.remove('dancing-bear');
+                bearSpeech.innerText = '"Dance Complete!"';
+                log.innerText = '> CODE 2: Bear finished. Cat can continue now.';
+            }, 2300);
+            scheduleSim(() => {
+                if (!valid()) return;
+                document.getElementById(catPrefix + '2').classList.remove('block-highlight');
+                document.getElementById(catPrefix + '3').classList.add('block-highlight');
+                catSpeech.innerText = '"Now I can continue!"';
+                catSpeech.classList.remove('hidden');
+                log.innerText = '> CODE 2 ONLY: Cat resumed after the receiver finished.';
+            }, 3000);
+            scheduleSim(() => {
+                if (!valid()) return;
+                isSimRunning = false;
+                document.getElementById(catPrefix + '3').classList.remove('block-highlight');
+                document.getElementById('sim-code-bear-3').classList.remove('block-highlight');
+                log.innerText = '🎉 CODE 2 finished. Code 1 was not executed.';
+                playSound('correct');
+                confetti({ particleCount: 30, spread: 60, origin: { y: 0.8 } });
+            }, 4300);
+        }
+    }, 500);
+}
+
+// SLIDE 8: Detective
+    let detectiveSolved = 0;
+    function toggleDetective(element, isValid) {
+        const icon = element.querySelector('.status-icon');
+        const feedback = document.getElementById('detective-feedback');
+
+        if (isValid) {
+            element.className = 'quiz-option selected-correct p-3 rounded-xl border-2';
+            icon.innerText = '✅ MATCHES';
+            playSound('correct');
+            detectiveSolved++;
+        } else {
+            element.className = 'quiz-option selected-wrong p-3 rounded-xl border-2';
+            icon.innerText = '❌ NO MATCH';
+            playSound('wrong');
+        }
+
+        if (detectiveSolved >= 2) {
+            feedback.innerHTML = '🏆 <strong>Great Detective Work!</strong> Scratch broadcasts must match uppercase and lowercase letters exactly!';
+        }
+    }
+
+    // SLIDE 9: Scenario
+    function checkScenario(btn, isCorrect) {
+        const parent = btn.parentElement;
+        const options = parent.querySelectorAll('.quiz-option');
+        options.forEach(opt => opt.classList.remove('selected-correct', 'selected-wrong'));
+
+        const feedback = document.getElementById('scenario-feedback');
+        if (isCorrect) {
+            btn.classList.add('selected-correct');
+            feedback.innerHTML = '🎉 <strong>Perfect decision!</strong> 1 Broadcast reaches all sprites on stage simultaneously!';
+            playSound('correct');
+            confetti({ particleCount: 35, spread: 65, origin: { y: 0.8 } });
+        } else {
+            btn.classList.add('selected-wrong');
+            feedback.innerHTML = '❌ <strong>Not quite!</strong> Broadcasters shout out to EVERY sprite at once!';
+            playSound('wrong');
+        }
+    }
+
+    // SLIDE 10: Code Builder
+    let builtBlocks = [];
+    function addBlockToBuilder(type) {
+        const workspace = document.getElementById('builder-workspace');
+        const emptyText = document.getElementById('builder-empty-text');
+        if (emptyText) emptyText.remove();
+
+        const block = document.createElement('div');
+        block.className = 'bg-[#FFBF00] text-white font-mono font-bold text-xs p-2 rounded-xl shadow';
+
+        if (type === 'when_clicked') block.innerText = 'when green flag clicked';
+        else if (type === 'broadcast_party') block.innerText = 'broadcast [party ▼]';
+        else if (type === 'when_party') block.innerText = 'when I receive [party ▼]';
+        else if (type === 'say_hello') {
+            block.className = 'bg-[#4C97FF] text-white font-mono font-bold text-xs p-2 rounded-xl shadow';
+            block.innerText = 'say "Let\'s Dance!" for 2 secs';
+        }
+
+        workspace.appendChild(block);
+        builtBlocks.push(type);
+        playSound('pop');
+    }
+
+    function clearBuilder() {
+        const workspace = document.getElementById('builder-workspace');
+        workspace.innerHTML = '<p id="builder-empty-text" class="text-xs text-alphagen-midGrey italic text-center py-8">Click blocks on the left to stack them here!</p>';
+        builtBlocks = [];
+        document.getElementById('stage-output').innerHTML = '> Stage Initialized.<br>> Waiting for code run...';
+        document.getElementById('stage-sprite-avatar').innerText = '🐱';
+        playSound('pop');
+    }
+
+    function runBuiltCode() {
+        const output = document.getElementById('stage-output');
+        const avatar = document.getElementById('stage-sprite-avatar');
+
+        if (builtBlocks.includes('when_clicked') && builtBlocks.includes('broadcast_party')) {
+            output.innerHTML = '> Green Flag clicked!<br>> BROADCASTING "party"...<br>⚡ Signal Received by Bear!';
+            avatar.innerText = '🐱🎉🐻';
+            playSound('correct');
+            confetti({ particleCount: 40, spread: 70, origin: { y: 0.8 } });
+        } else {
+            output.innerHTML = '> Code Executed.<br>⚠ Nothing happened! Did you pair a Green Flag with a Broadcast block?';
+            playSound('wrong');
+        }
+    }
+
+    // SLIDE 11: Class Prep Quiz
+    let prepQ1 = false, prepQ2 = false;
+    function checkPrepQuiz(qNum, btn, isCorrect) {
+        const parent = btn.parentElement;
+        const options = parent.querySelectorAll('.quiz-option');
+        options.forEach(opt => opt.classList.remove('selected-correct', 'selected-wrong'));
+
+        if (isCorrect) {
+            btn.classList.add('selected-correct');
+            if (qNum === 1) prepQ1 = true;
+            if (qNum === 2) prepQ2 = true;
+            playSound('correct');
+            confetti({ particleCount: 45, spread: 70, origin: { y: 0.65 } });
+        } else {
+            btn.classList.add('selected-wrong');
+            playSound('wrong');
+        }
+
+        if (prepQ1 && prepQ2) {
+            const banner = document.getElementById('prep-banner');
+            banner.innerHTML = '🚀 <strong>You are completely ready to write your first code! 🚀</strong>';
+            banner.className = 'bg-green-100 border-l-4 border-green-500 p-3 rounded-r-xl text-xs md:text-sm text-green-800 font-extrabold text-center';
+            confetti({ particleCount: 80, spread: 80, origin: { y: 0.7 } });
+        }
+    }
+
+    function finishLesson() {
+        playSound('correct');
+        confetti({ particleCount: 140, spread: 100, startVelocity: 45, origin: { y: 0.65 } });
+    }
+
+    // Keyboard Arrow Navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'Space') {
+            nextSlide();
+        } else if (e.key === 'ArrowLeft') {
+            prevSlide();
+        }
+    });
+
+    // Initialize Presentation
+    buildDots();
+    updateNav();
+</script>
+</body>
+</html>
